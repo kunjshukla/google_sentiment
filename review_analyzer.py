@@ -11,12 +11,16 @@ from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 import subprocess
 import sys
+from typing import List, Dict, Any
+from textblob import TextBlob
+import re
+import json
 
 # Load environment variables
 load_dotenv()
 
 class ReviewAnalyzer:
-    def __init__(self):
+    def __init__(self, reviews_file: str = "reviews.json"):
         # Initialize ChromaDB
         self.chroma_client = chromadb.Client()
         self.collection = self.chroma_client.create_collection(name="reviews")
@@ -37,6 +41,28 @@ class ReviewAnalyzer:
         
         # Initialize data storage
         self.reviews_df = pd.DataFrame(columns=['text', 'rating', 'date', 'sentiment', 'complaint'])
+        
+        # Load reviews from JSON file
+        self._load_reviews_from_file(reviews_file)
+    
+    def _load_reviews_from_file(self, reviews_file: str):
+        """Load reviews from a JSON file"""
+        try:
+            with open(reviews_file, 'r') as f:
+                reviews_data = json.load(f)
+                
+            for review in reviews_data:
+                self.add_review(
+                    text=review['review_text'],
+                    rating=review['rating'],
+                    date=datetime.fromisoformat(review['date'] + "T00:00:00")
+                )
+        except FileNotFoundError:
+            print(f"Warning: Reviews file '{reviews_file}' not found. Starting with empty dataset.")
+        except json.JSONDecodeError:
+            print(f"Error: Invalid JSON format in '{reviews_file}'")
+        except Exception as e:
+            print(f"Error loading reviews: {str(e)}")
     
     def add_review(self, text, rating, date):
         """Add a new review to the system"""
@@ -117,44 +143,42 @@ class ReviewAnalyzer:
         
         return has_keywords or has_phrases
     
-    def generate_weekly_report(self):
-        """Generate a weekly report with sentiment analysis and complaint summary"""
+    def generate_weekly_report(self) -> str:
+        """Generate a weekly sentiment analysis report"""
         # Get last week's data
-        one_week_ago = datetime.now() - timedelta(days=7)
-        weekly_data = self.reviews_df[self.reviews_df['date'] >= one_week_ago]
+        last_week = datetime.now() - timedelta(days=7)
+        weekly_data = self.reviews_df[self.reviews_df['date'] >= last_week]
         
-        # Create sentiment trend plot
-        fig = px.line(weekly_data, x='date', y='sentiment_score', 
-                     title='Sentiment Trend Over Past Week')
-        fig.write_image("sentiment_trend.png")
-        
-        # Generate PDF report
-        c = canvas.Canvas("weekly_report.pdf", pagesize=letter)
-        c.drawString(100, 750, "Weekly Review Analysis Report")
-        c.drawString(100, 730, f"Period: {one_week_ago.date()} to {datetime.now().date()}")
-        
-        # Add sentiment summary
-        c.drawString(100, 700, "Sentiment Summary:")
+        # Calculate metrics
+        avg_sentiment = weekly_data['sentiment_score'].mean()
+        total_reviews = len(weekly_data)
         positive_reviews = len(weekly_data[weekly_data['sentiment'] == 'POSITIVE'])
         negative_reviews = len(weekly_data[weekly_data['sentiment'] == 'NEGATIVE'])
-        c.drawString(100, 680, f"Positive Reviews: {positive_reviews}")
-        c.drawString(100, 660, f"Negative Reviews: {negative_reviews}")
         
-        # Add complaint summary with context
+        # Generate report
+        report = f"Weekly Review Analysis Report\n"
+        report += f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        report += f"Total Reviews: {total_reviews}\n"
+        report += f"Average Sentiment Score: {avg_sentiment:.2f}\n"
+        report += f"Positive Reviews: {positive_reviews}\n"
+        report += f"Negative Reviews: {negative_reviews}\n\n"
+        
+        # Add complaint analysis
         complaints = weekly_data[weekly_data['complaint'] == True]
-        c.drawString(100, 620, "Complaints Summary:")
-        for i, (_, row) in enumerate(complaints.iterrows()):
-            similar_reviews = self._get_similar_reviews(row['text'])
-            c.drawString(100, 600 - i*40, f"Complaint: {row['text'][:50]}...")
-            if similar_reviews:
-                c.drawString(100, 580 - i*40, f"Similar Reviews: {len(similar_reviews)} found")
+        if not complaints.empty:
+            report += "Complaints Summary:\n"
+            for _, row in complaints.iterrows():
+                report += f"- {row['text'][:100]}...\n"
         
-        # Add sentiment trend image
-        c.drawImage("sentiment_trend.png", 100, 300, width=400, height=200)
+        return report
+    
+    def get_sentiment_trends(self) -> Dict[str, float]:
+        """Get sentiment trends over time"""
+        df = self.reviews_df.copy()
+        df['date'] = pd.to_datetime(df['date']).dt.date
+        daily_sentiment = df.groupby('date')['sentiment_score'].mean()
         
-        c.save()
-        
-        return "weekly_report.pdf"
+        return daily_sentiment.to_dict()
     
     def get_complaints(self):
         """Get all complaints from the reviews"""
@@ -163,19 +187,55 @@ class ReviewAnalyzer:
     def get_similar_reviews(self, text, n_results=3):
         """Get similar reviews for a given text"""
         return self._get_similar_reviews(text, n_results)
+    
+    def extract_top_themes(self, n=5):
+        """Extract top themes from reviews"""
+        # Simple implementation - can be enhanced with more sophisticated NLP
+        all_text = " ".join(self.reviews_df['text'].tolist())
+        doc = self.nlp(all_text)
+        
+        # Get noun phrases as potential themes
+        themes = []
+        for chunk in doc.noun_chunks:
+            if len(chunk.text.split()) > 1:  # Only consider multi-word phrases
+                themes.append(chunk.text.lower())
+        
+        # Count theme occurrences
+        theme_counts = pd.Series(themes).value_counts()
+        return theme_counts.head(n).to_dict()
+    
+    def categorize_reviews(self):
+        """Categorize reviews into different aspects"""
+        categories = {
+            'service': [],
+            'food': [],
+            'ambiance': [],
+            'price': [],
+            'other': []
+        }
+        
+        for _, row in self.reviews_df.iterrows():
+            text = row['text'].lower()
+            if any(word in text for word in ['service', 'staff', 'server', 'waiter', 'waitress']):
+                categories['service'].append(row['text'])
+            elif any(word in text for word in ['food', 'dish', 'meal', 'menu', 'taste']):
+                categories['food'].append(row['text'])
+            elif any(word in text for word in ['ambiance', 'atmosphere', 'decor', 'music', 'noise']):
+                categories['ambiance'].append(row['text'])
+            elif any(word in text for word in ['price', 'cost', 'expensive', 'cheap', 'value']):
+                categories['price'].append(row['text'])
+            else:
+                categories['other'].append(row['text'])
+        
+        return categories
 
 # Example usage
 if __name__ == "__main__":
     analyzer = ReviewAnalyzer()
     
-    # Example reviews
-    analyzer.add_review("Great service and friendly staff!", 5, datetime.now())
-    analyzer.add_review("Terrible experience, will never come back", 1, datetime.now())
-    analyzer.add_review("Average service, could be better", 3, datetime.now())
-    
     # Generate report
-    report_path = analyzer.generate_weekly_report()
-    print(f"Report generated at: {report_path}")
+    report = analyzer.generate_weekly_report()
+    print(report)
     
     # Get complaints
     complaints = analyzer.get_complaints()
