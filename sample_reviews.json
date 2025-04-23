@@ -1,0 +1,54 @@
+{
+    "reviews": [
+        {
+            "text": "Amazing food and excellent service! The staff was very friendly and attentive. Will definitely come back again.",
+            "rating": 5,
+            "date": "2024-04-20T12:30:00"
+        },
+        {
+            "text": "Terrible experience. Waited 45 minutes for our food and when it arrived, it was cold. Never coming back.",
+            "rating": 1,
+            "date": "2024-04-19T18:15:00"
+        },
+        {
+            "text": "Good food but service was slow. The ambiance was nice though.",
+            "rating": 3,
+            "date": "2024-04-18T20:00:00"
+        },
+        {
+            "text": "Best pizza in town! The crust was perfect and the toppings were fresh. Staff was very helpful with recommendations.",
+            "rating": 5,
+            "date": "2024-04-17T19:30:00"
+        },
+        {
+            "text": "Horrible customer service. The manager was rude and didn't care about our complaints. Food was mediocre at best.",
+            "rating": 2,
+            "date": "2024-04-16T13:45:00"
+        },
+        {
+            "text": "Great atmosphere and delicious food. The wine selection was impressive. Will recommend to friends!",
+            "rating": 5,
+            "date": "2024-04-15T21:00:00"
+        },
+        {
+            "text": "Average experience. Nothing special about the food or service. Probably won't return.",
+            "rating": 3,
+            "date": "2024-04-14T14:20:00"
+        },
+        {
+            "text": "Excellent service and the food was outstanding! The chef came out to check on us, which was a nice touch.",
+            "rating": 5,
+            "date": "2024-04-13T20:30:00"
+        },
+        {
+            "text": "Disappointed with the quality. The steak was overcooked and the sides were cold. Not worth the price.",
+            "rating": 2,
+            "date": "2024-04-12T19:15:00"
+        },
+        {
+            "text": "Perfect date night spot! Romantic ambiance, attentive staff, and the food was exceptional.",
+            "rating": 5,
+            "date": "2024-04-11T20:45:00"
+        }
+    ]
+} 
