@@ -1,0 +1,11 @@
+date,text,rating,sentiment
+2024-03-01,"Great service and amazing food! Will definitely come back.",5,positive
+2024-03-02,"The ambiance was perfect, but the food was a bit too salty.",3,neutral
+2024-03-03,"Terrible experience. Waited for an hour and the food was cold.",1,negative
+2024-03-04,"Best restaurant in town! Everything was perfect.",5,positive
+2024-03-05,"Average food, but the staff was very friendly.",4,positive
+2024-03-06,"Not worth the price. Food quality has gone down.",2,negative
+2024-03-07,"Lovely place with great atmosphere. Food was delicious.",5,positive
+2024-03-08,"Service was slow and the food was mediocre.",2,negative
+2024-03-09,"Excellent experience from start to finish!",5,positive
+2024-03-10,"The place was too noisy and the food was just okay.",3,neutral 
